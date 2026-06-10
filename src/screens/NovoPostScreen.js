@@ -1,58 +1,65 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, FlatList } from 'react-native';
 import Botao from '../components/Botao';
-import { buscarPosts, buscarUsuario, salvarPosts } from '../storage/devgramStorage';
+import { buscarPosts, salvarPosts } from '../storage/devgramStorage';
 
-export default function NovoPostScreen({ navigation }) {
-  const [texto, setTexto] = useState('');
+export default function ComentariosScreen({ route }) {
 
-  async function publicar() {
-    if (!texto.trim()) {
-      Alert.alert('Atenção', 'Digite algo para publicar.');
+  const { post } = route.params;
+
+  const [comentario, setComentario] = useState('');
+
+  async function comentar() {
+
+    if (!comentario.trim()) {
       return;
     }
 
-    const usuario = await buscarUsuario();
+    const posts = await buscarPosts();
 
-    if (!usuario) {
-      Alert.alert('Erro', 'Usuário não encontrado.');
-      navigation.replace('Login');
-      return;
-    }
+    const novosPosts = posts.map(item => {
 
-    const postsAtuais = await buscarPosts();
+      if (item.id === post.id) {
 
-    const novoPost = {
-      id: Date.now(),
-      usuario: usuario.nome,
-      texto,
-      likes: 0,
-      comentarios: [],
-      criadoEm: new Date().toISOString(),
-    };
+        return {
+          ...item,
+          comentarios: [...item.comentarios, comentario]
+        };
+      }
 
-    const novosPosts = [...postsAtuais, novoPost];
+      return item;
+    });
 
     await salvarPosts(novosPosts);
 
-    Alert.alert('Sucesso', 'Post publicado!');
-    setTexto('');
-    navigation.navigate('Feed');
+    setComentario('');
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.titulo}>O que você está pensando?</Text>
 
-      <TextInput
-        style={styles.textArea}
-        placeholder="Digite seu post..."
-        value={texto}
-        onChangeText={setTexto}
-        multiline
+      <Text style={styles.titulo}>Comentários</Text>
+
+      <FlatList
+        data={post.comentarios}
+        keyExtractor={(item, index) => index.toString()}
+        renderItem={({ item }) => (
+          <Text style={styles.comentario}>{item}</Text>
+        )}
       />
 
-      <Botao titulo="Publicar" onPress={publicar} />
+      <TextInput
+        style={styles.input}
+        placeholder="Digite um comentário"
+        value={comentario}
+        onChangeText={setComentario}
+      />
+
+      <Botao
+        titulo="Comentar"
+        onPress={comentar}
+      />
+
     </View>
   );
 }
@@ -63,18 +70,25 @@ const styles = StyleSheet.create({
     padding: 22,
     backgroundColor: '#F3F4F6',
   },
+
   titulo: {
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 18,
     color: '#111827',
   },
-  textArea: {
+
+  comentario: {
+    backgroundColor: '#fff',
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 10,
+  },
+
+  input: {
     backgroundColor: '#fff',
     borderRadius: 14,
     padding: 14,
-    height: 160,
-    textAlignVertical: 'top',
     fontSize: 16,
     marginBottom: 14,
   },
